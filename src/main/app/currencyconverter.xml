@@ -9,12 +9,18 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
     <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
     <flow name="currencyconverterFlow">
         <http:listener config-ref="HTTP_Listener_Configuration" path="/convert" allowedMethods="get" doc:name="HTTP"/>
-        <logger message="#[message.inboundProperties.'usdValue']" level="INFO" doc:name="Logger"/>
-        <message-filter doc:name="Message">
-            <expression-filter expression="#[message.inboundProperties.'usdValue'!=null &amp;&amp;  message.inboundProperties.'usdValue'!='']"/>
+        <logger message="#[message.inboundProperties.'http.query.params'.usdAmount]" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="usdAmount" value="#[message.inboundProperties.'http.query.params'.usdAmount]" doc:name="Variable"/>
+        <message-filter doc:name="Message" onUnaccepted="currencyconverterSub_Flow">
+            <expression-filter expression="#[flowVars.usdAmount!=null &amp;&amp;  flowVars.usdAmount!='']"/>
         </message-filter>
-        <set-variable variableName="ruppeesValue" value="#[BigDecimal.valueOf(message.inboundProperties.'usdValue')*63]" doc:name="Convert"/>
-        <set-payload value="{&quot;rupeeValue&quot; : #[flowVars.ruppeesValue]}" mimeType="text/json" doc:name="Set Payload"/>
+        <set-variable variableName="ruppeesValue" value="#[Float.parseFloat(flowVars.usdAmount)*63]" doc:name="Convert"/>
+        <set-payload value="{&quot;ConvertedAmount&quot; : #[flowVars.ruppeesValue]}" mimeType="text/json" doc:name="Set Payload"/>
         <logger message="#[payload]" level="INFO" doc:name="Logger"/>
     </flow>
+    <sub-flow name="currencyconverterSub_Flow">
+        <logger message="USD Amount not Set in query Param" level="INFO" doc:name="Logger"/>
+        <set-payload value="{&quot;generalErrorDetail&quot;:&quot;Please enter usdAmount&quot;}" mimeType="text/json" doc:name="Set Payload"/>
+        <set-property propertyName="http.status" value="401" doc:name="Property"/>
+    </sub-flow>
 </mule>
